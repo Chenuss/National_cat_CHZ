@@ -96,13 +96,43 @@ def fetch_product_details(good_ids: List[int]) -> Dict[str, Any]:
             print(f"   🔍 Полная структура ответа: {data}")
             return None
         
-        if 'goods' not in data['result']:
-            print(f"   ❌ Неверная структура ответа: отсутствует ключ 'goods' в 'result'")
-            print(f"   🔍 Ключи в result: {list(data['result'].keys())}")
-            print(f"   🔍 Полная структура ответа: {data}")
-            return None
+        result = data['result']
         
-        goods = data['result']['goods']
+        # Выводим полную структуру result для отладки
+        print(f"   🔍 Структура 'result': {type(result)}")
+        if isinstance(result, dict):
+            print(f"   🔍 Ключи в 'result': {list(result.keys())}")
+            # Если это список товаров, он может быть напрямую в result или в ключе 'goods'
+            if 'goods' not in result:
+                print(f"   ⚠️  Ключ 'goods' не найден. Возможные варианты структуры:")
+                for key, value in result.items():
+                    print(f"      - {key}: {type(value)} (len={len(value) if hasattr(value, '__len__') else 'N/A'})")
+                # Пробуем найти список товаров в любом из полей
+                goods_list = None
+                for key, value in result.items():
+                    if isinstance(value, list) and len(value) > 0 and isinstance(value[0], dict) and 'good_id' in value[0]:
+                        print(f"   ✅ Найдены товары в ключе '{key}'")
+                        goods_list = value
+                        break
+                if goods_list is None:
+                    print(f"   ❌ Не удалось найти список товаров.")
+                    print(f"   🔍 Полный content 'result': {str(result)[:3000]}")
+                    return None
+                goods = goods_list
+            else:
+                goods = result['goods']
+        elif isinstance(result, list):
+            print(f"   🔍 'result' является списком товаров")
+            goods = result
+        else:
+            print(f"   ❌ Неверный тип 'result': {type(result)}")
+            print(f"   🔍 Содержимое result: {str(result)[:1000]}")
+            return None
+
+        if not isinstance(goods, list):
+            print(f"   ❌ Ожидается список товаров, получено: {type(goods)}")
+            print(f"   🔍 Содержимое goods: {str(goods)[:1000]}")
+            return None
         print(f"   ✅ Найдено товаров в ответе: {len(goods) if isinstance(goods, list) else 'N/A'}")
         
         # Логгируем структуру первого товара для отладки
