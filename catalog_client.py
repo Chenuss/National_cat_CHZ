@@ -38,7 +38,7 @@ class NationalCatalogClient:
             api_url: URL API. Если не указан, берётся из переменной окружения API_URL.
         """
         self.api_key = api_key or os.getenv('API_KEY')
-        self.api_url = api_url or os.getenv('API_URL', 'https://api.nk.sandbox.crptech.ru')
+        self.api_url = api_url or os.getenv('API_URL', 'https://апи.национальный-каталог.рф')
         
         if not self.api_key:
             raise ValueError("API ключ не найден. Укажите его в параметре или в переменной окружения API_KEY.")
@@ -90,13 +90,27 @@ class NationalCatalogClient:
             
             data = response.json()
             
-            # API может возвращать данные в разных форматах
+            # API возвращает данные в формате: {'apiversion': 4, 'result': {'goods': [...]}}
             if isinstance(data, list):
                 products = data
-            elif isinstance(data, dict) and 'data' in data:
-                products = data['data']
+            elif isinstance(data, dict):
+                # Пробуем разные варианты структуры ответа
+                if 'result' in data and isinstance(data['result'], dict):
+                    if 'goods' in data['result']:
+                        products = data['result']['goods']
+                    else:
+                        products = list(data['result'].values())
+                        # Если это список внутри result
+                        if len(products) == 1 and isinstance(products[0], list):
+                            products = products[0]
+                elif 'data' in data:
+                    products = data['data']
+                elif 'goods' in data:
+                    products = data['goods']
+                else:
+                    products = [data] if data else []
             else:
-                products = [data] if data else []
+                products = []
             
             logger.info(f"Получено {len(products)} товаров")
             return products
