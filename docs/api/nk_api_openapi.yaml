@@ -1,0 +1,454 @@
+openapi: 3.0.3
+info:
+  title: Национальный Каталог маркированных товаров — API
+  description: |
+    API Национального Каталога маркированных товаров Российской Федерации («Честный Знак»).
+
+    Национальный Каталог создан с целью обеспечения единообразия, стандартизации и унификации данных о товаре,
+    а также ведения всей необходимой справочной информации с единым его описанием во всей товаропроводящей цепи,
+    от производителя и/или импортера товара до розницы.
+
+    ## Аутентификация
+    При работе с методами API необходимо указать в запросе ключ доступа (`apikey`) **или**
+    аутентификационный токен ГИС МТ (`Authorization: Bearer <token>`).
+
+    ## Лимиты запросов
+    По каждой организации накладывается общее ограничение (для всех методов) и частное (для выделенного метода).
+    При исчерпании лимита начать новую серию можно через **5 минут** с момента первого запроса.
+
+    Счётчики передаются в заголовках ответа:
+    - `API-Usage-Limit` — общее ограничение (пример: `1/500`)
+    - `API-Method-Usage-Limit` — частное ограничение (пример: `1/10`)
+
+    ## HTTP ETag
+    Заголовок ETag используется для кэширования. При получении ответа `304 Not Modified`
+    лимит использования API не действует.
+    Используется для методов: `product`, `short-product`, `categories`, `brands`.
+  version: "5.59"
+  contact:
+    name: Национальный Каталог — Техническая поддержка
+    url: https://апи.национальный-каталог.рф
+
+servers:
+  - url: https://api.nk.sandbox.crptech.ru
+    description: Тестовая среда (Sandbox)
+  - url: https://апи.национальный-каталог.рф
+    description: Продуктивная среда
+
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: query
+      name: apikey
+      description: |
+        Идентификатор (ключ) владельца товара. Обязательный, если не указан Bearer token.
+        Получить можно в личном кабинете НК: раздел «Профиль» → «Данные участника» → поле «API KEY»
+        (отображается только для пользователя с ролью «Администратор»).
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        Аутентификационный токен ГИС МТ. Обязательный, если не указан apikey.
+        Получить с помощью взаимодействия с True API (методы единой аутентификации).
+
+  parameters:
+    ApiKeyParam:
+      name: apikey
+      in: query
+      required: false
+      description: Идентификатор (ключ) владельца товара. Обязательный, если не указан token.
+      schema:
+        type: string
+
+    FormatParam:
+      name: format
+      in: query
+      required: false
+      description: Формат вывода ответа.
+      schema:
+        type: string
+        enum:
+          - json
+          - xml
+        default: json
+
+    IfNoneMatchHeader:
+      name: If-None-Match
+      in: header
+      required: false
+      description: Значение ETag, полученного в предыдущем ответе, для кэширования.
+      schema:
+        type: string
+        example: '"686897696a7c876b7e"'
+
+  schemas:
+    IdentifiedByItem:
+      type: object
+      required:
+        - value
+        - type
+        - gtin
+        - multiplier
+        - level
+      properties:
+        value:
+          type: string
+          description: Значение идентификатора.
+        type:
+          type: string
+          description: Тип идентификатора.
+        gtin:
+          type: string
+          description: Глобальный штрих-код GTIN.
+        multiplier:
+          type: integer
+          description: Количество товаров в упаковке. По умолчанию — 1.
+          default: 1
+        level:
+          type: string
+          description: Уровень упаковки.
+          enum:
+            - trade-unit
+            - inner-pack
+            - box
+            - layer
+            - pallet
+            - metro-unit
+            - show-pack
+
+    SetGtinItem:
+      type: object
+      properties:
+        gtin:
+          type: string
+          description: Код товара в составе набора.
+        quantity:
+          type: integer
+          description: Количество вложений в наборе.
+
+    CategoryItem:
+      type: object
+      required:
+        - cat_id
+        - cat_name
+      properties:
+        cat_id:
+          type: integer
+          description: Идентификатор категории.
+        cat_name:
+          type: string
+          description: Наименование категории.
+
+    GoodImageItem:
+      type: object
+      properties:
+        photo_type:
+          type: string
+          description: Тип фотографии.
+
+    FeedProductResponse:
+      type: object
+      required:
+        - identified_by
+        - good_id
+        - is_kit
+        - is_set
+        - good_status
+        - good_signed
+        - good_mark_flag
+        - flags_updated_date
+        - create_date
+        - update_date
+        - first_sign_date
+        - producer_inn
+        - producer_name
+        - categories
+        - brand_id
+        - brand_name
+      properties:
+        identified_by:
+          type: array
+          description: Массив идентификаторов товара.
+          items:
+            $ref: '#/components/schemas/IdentifiedByItem'
+        good_id:
+          type: integer
+          description: Идентификатор товара.
+        good_name:
+          type: string
+          description: Наименование товара.
+        is_sim:
+          type: boolean
+          description: Признак карточки индустриальной маркировки.
+        is_kit:
+          type: boolean
+          description: Признак карточки типа «Комплект».
+        is_set:
+          type: boolean
+          description: Признак карточки типа «Набор».
+        set_gtins:
+          type: array
+          description: Массив вложений в набор (только при is_set=1).
+          items:
+            $ref: '#/components/schemas/SetGtinItem'
+        good_img:
+          type: string
+          description: Фотография по умолчанию (URL).
+        good_status:
+          type: string
+          description: Технологический статус карточки.
+        good_detailed_status:
+          type: array
+          description: Массив текущих статусов карточки.
+          items:
+            type: string
+            enum:
+              - draft
+              - moderation
+              - errors
+              - notsigned
+              - published
+              - archived
+        good_signed:
+          type: boolean
+          description: Признак подписания карточки.
+        good_mark_flag:
+          type: boolean
+          description: Признак заполнения атрибутов первого слоя (эмиссия КМ).
+        good_turn_flag:
+          type: boolean
+          description: Признак заполнения атрибутов второго слоя (ввод в оборот).
+        flags_updated_date:
+          type: string
+          format: date-time
+          description: Дата обновления флагов.
+        create_date:
+          type: string
+          format: date-time
+          description: Дата создания карточки.
+        update_date:
+          type: string
+          format: date-time
+          description: Дата обновления карточки.
+        first_sign_date:
+          type: string
+          format: date-time
+          description: Дата первого подписания карточки.
+        producer_inn:
+          type: string
+          description: ИНН компании производителя/импортера.
+        producer_name:
+          type: string
+          description: Наименование компании производителя/импортера.
+        categories:
+          type: array
+          description: Массив категорий.
+          items:
+            $ref: '#/components/schemas/CategoryItem'
+        brand_id:
+          type: integer
+          description: Идентификатор товарного знака.
+        brand_name:
+          type: string
+          description: Наименование товарного знака.
+        good_images:
+          type: array
+          description: Массив изображений.
+          items:
+            $ref: '#/components/schemas/GoodImageItem'
+
+    ErrorResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: Код ошибки.
+        message:
+          type: string
+          description: Описание ошибки.
+
+paths:
+  /v3/feed-product:
+    get:
+      summary: Получить информацию о собственной карточке
+      operationId: getFeedProduct
+      description: |
+        Возвращает всю имеющуюся информацию о карточке товара (о Вашей или о той,
+        к которой Вам предоставлен доступ правообладателем в рамках функционала работы с субаккаунтами),
+        то есть все заполненные атрибуты независимо от статуса самой карточки
+        (за исключением карточек в статусе «Требует обработки»).
+
+        **Примечания:**
+        - Требует обязательного указания одного из параметров: `gtin`, `good_id`, `gtins` или `good_ids`.
+        - Если указаны оба: `gtin` и `good_id` — возвращается выборка по `good_id`, GTIN игнорируется.
+        - Если указаны оба: `gtins` и `good_ids` — возвращается выборка по обоим параметрам.
+        - Если указаны `gtins` и/или `good_ids`, максимальное количество позиций — 25.
+        - Если указан один из `gtin`/`good_id` и один из `gtins`/`good_ids` одновременно — возвращается код 400.
+      tags:
+        - Карточки товаров
+      parameters:
+        - $ref: '#/components/parameters/ApiKeyParam'
+        - $ref: '#/components/parameters/FormatParam'
+        - $ref: '#/components/parameters/IfNoneMatchHeader'
+        - name: gtin
+          in: query
+          required: false
+          description: Код товара. Обязательный, если отсутствует good_id, good_ids, gtins.
+          schema:
+            type: string
+          example: "0000000000001"
+        - name: good_id
+          in: query
+          required: false
+          description: Идентификатор товара в каталоге. Обязательный, если отсутствует gtin, good_ids, gtins.
+          schema:
+            type: string
+        - name: gtins
+          in: query
+          required: false
+          description: Список кодов товара с разделителем ";". Максимум 25 позиций.
+          schema:
+            type: string
+          example: "0000000000001;0000000000002"
+        - name: good_ids
+          in: query
+          required: false
+          description: Список идентификаторов товара с разделителем ";". Максимум 25 позиций.
+          schema:
+            type: string
+          example: "12345;67890"
+        - name: subaccount
+          in: query
+          required: false
+          description: Признак запроса карточки из-под субаккаунта.
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Успешный ответ. Возвращает информацию о карточке товара.
+          headers:
+            API-Usage-Limit:
+              description: Счётчик запросов в рамках общего ограничения (пример — 1/500).
+              schema:
+                type: string
+                example: "1/500"
+            API-Method-Usage-Limit:
+              description: Счётчик запросов в рамках частного ограничения (пример — 1/10).
+              schema:
+                type: string
+                example: "1/10"
+            ETag:
+              description: Хэш текущей версии ресурса.
+              schema:
+                type: string
+                example: '"38fho43p543re634c993ec28581d867"'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeedProductResponse'
+              example:
+                identified_by:
+                  - value: "0000000000001"
+                    type: "gtin"
+                    gtin: "0000000000001"
+                    multiplier: 1
+                    level: "trade-unit"
+                good_id: 123456
+                good_name: "Пример товара"
+                is_sim: false
+                is_kit: false
+                is_set: false
+                good_img: "https://example.com/image.jpg"
+                good_status: "published"
+                good_detailed_status:
+                  - "published"
+                good_signed: true
+                good_mark_flag: true
+                good_turn_flag: true
+                flags_updated_date: "2024-01-15T10:30:00Z"
+                create_date: "2023-06-01T08:00:00Z"
+                update_date: "2024-01-15T10:30:00Z"
+                first_sign_date: "2023-06-02T09:00:00Z"
+                producer_inn: "7700000000"
+                producer_name: "ООО Пример"
+                categories:
+                  - cat_id: 100
+                    cat_name: "Одежда"
+                brand_id: 55
+                brand_name: "Brand Name"
+                good_images:
+                  - photo_type: "main"
+        '304':
+          description: Страница не изменилась (ETag совпадает). Лимит API не действует.
+        '400':
+          description: Ошибка в параметрах запроса.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Не авторизован. Отсутствует apikey/token.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Нет доступа к запрашиваемой информации.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Запрашиваемая информация не найдена.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '413':
+          description: Размер запроса превышает лимит.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Превышен лимит запросов к API. Заголовок Retry-After содержит время ожидания в секундах.
+          headers:
+            Retry-After:
+              description: Время до снятия ограничения (в секундах).
+              schema:
+                type: integer
+                example: 300
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Внутренняя ошибка сервера.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '501':
+          description: Метод не существует.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Сервис недоступен (техническое обслуживание). Повторите позже.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      security:
+        - ApiKeyAuth: []
+        - BearerAuth: []
+
+tags:
+  - name: Карточки товаров
+    description: Методы для получения и управления карточками маркируемых товаров.
