@@ -233,9 +233,14 @@ def save_product_details(conn: sqlite3.Connection, products: List[Dict[str, Any]
         if images and isinstance(images, list):
             for img in images:
                 if isinstance(img, dict):
+                    photo_type = img.get('photo_type')
+                    image_url = img.get('href')
+                    # Пропускаем изображения без URL
+                    if not image_url:
+                        continue
                     cursor.execute(
                         "INSERT INTO product_images (good_id, photo_type, image_url) VALUES (?, ?, ?)",
-                        (good_id, img.get('photo_type'), img.get('href'))
+                        (good_id, photo_type, image_url)
                     )
                 elif isinstance(img, str):
                     cursor.execute(

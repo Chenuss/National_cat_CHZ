@@ -97,7 +97,7 @@ def migrate_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 good_id INTEGER NOT NULL,
                 photo_type TEXT,
-                image_url TEXT NOT NULL,
+                image_url TEXT,
                 FOREIGN KEY (good_id) REFERENCES products(good_id) ON DELETE CASCADE
             )
         """)
