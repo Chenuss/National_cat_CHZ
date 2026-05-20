@@ -87,12 +87,30 @@ def fetch_product_details(good_ids: List[int]) -> Dict[str, Any]:
         
         data = response.json()
         
+        # Подробное логирование структуры ответа
+        print(f"   📄 Получен ответ. Ключи верхнего уровня: {list(data.keys())}")
+        
         # Проверка структуры ответа
-        if 'result' not in data or 'goods' not in data['result']:
-            print(f"   ❌ Неверная структура ответа: {data.keys()}")
+        if 'result' not in data:
+            print(f"   ❌ Неверная структура ответа: отсутствует ключ 'result'")
+            print(f"   🔍 Полная структура ответа: {data}")
             return None
         
-        return data['result']['goods']
+        if 'goods' not in data['result']:
+            print(f"   ❌ Неверная структура ответа: отсутствует ключ 'goods' в 'result'")
+            print(f"   🔍 Ключи в result: {list(data['result'].keys())}")
+            print(f"   🔍 Полная структура ответа: {data}")
+            return None
+        
+        goods = data['result']['goods']
+        print(f"   ✅ Найдено товаров в ответе: {len(goods) if isinstance(goods, list) else 'N/A'}")
+        
+        # Логгируем структуру первого товара для отладки
+        if isinstance(goods, list) and len(goods) > 0:
+            first_good = goods[0]
+            print(f"   📋 Структура первого товара: ключи = {list(first_good.keys()) if isinstance(first_good, dict) else type(first_good)}")
+        
+        return goods
         
     except requests.exceptions.RequestException as e:
         print(f"   ❌ Ошибка запроса: {e}")
