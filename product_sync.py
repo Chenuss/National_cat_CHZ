@@ -75,6 +75,9 @@ class ProductSyncManager:
         stats = SyncStats()
 
         with self.session_factory() as session:
+            # Инициализируем репозиторий состояния
+            self.state_repo = SyncStateRepo(session)
+            
             try:
                 # Шаг 1: Получение списка ID
                 logger.info("Этап 1: Получение списка товаров (product-list)...")
@@ -130,6 +133,9 @@ class ProductSyncManager:
         stats = SyncStats()
 
         with self.session_factory() as session:
+            # Инициализируем репозиторий состояния
+            self.state_repo = SyncStateRepo(session)
+            
             try:
                 # Шаг 1: Получение remote ETags
                 logger.info("Этап 1: Получение списка ETag (etagslist)...")
