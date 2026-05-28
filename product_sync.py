@@ -545,6 +545,9 @@ class ProductSyncManager:
     def _handle_rate_limit(self):
         """Проверяет лимиты и делает sleep при необходимости."""
         left = self.client.api_usage_left
+        if left is None:
+            # Если информация о лимитах недоступна, просто пропускаем проверку
+            return
         if left < 5:
             logger.warning(f"Мало запросов ({left}). Сон 10с.")
             time.sleep(10.0)
