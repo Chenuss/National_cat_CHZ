@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy import func, delete
 
-from nk_client import NKCatalogClient, NKApiError, NKRequestTooLargeError
+from nk_client import NKCatalogClient, NKApiError, NKRequestTooLargeError, NKResponse
 from models import (
     Product, ProductAttribute, ProductPackage, ProductSetItem, ProductImage,
     SyncState
@@ -221,14 +221,17 @@ class ProductSyncManager:
                 total_count = None
                 
                 while True:
-                    params = {
-                        "from_date": d_from,
-                        "to_date": d_to,
-                        "limit": PRODUCT_LIST_PAGE_SIZE,
-                        "offset": offset
-                    }
+                    response = self.client.get_product_list(
+                        from_date=d_from,
+                        to_date=d_to,
+                        limit=PRODUCT_LIST_PAGE_SIZE,
+                        offset=offset
+                    )
                     
-                    resp_data, _, _ = self.client.get("/v4/product-list", params=params)
+                    resp_data = response.data
+                    
+                    if not resp_data:
+                        break
                     
                     # Структура ответа v4: { result: { goods: [...], total: N } }
                     result = resp_data.get('result', {})
@@ -270,7 +273,7 @@ class ProductSyncManager:
                     "count": len(all_goods)
                 })
 
-            except NKApiError as e:
+            except NKRequestTooLargeError as e:
                 if e.status_code == 413:
                     logger.warning(f"HTTP 413 для периода [{d_from} - {d_to}]. Дробим период.")
                     mid_date = self._split_date_range(d_from, d_to)
@@ -278,6 +281,9 @@ class ProductSyncManager:
                     queue.append((d_from, mid_date))
                 else:
                     raise
+            except Exception as e:
+                logger.error(f"Неожиданная ошибка при загрузке product-list: {e}", exc_info=True)
+                raise
 
         return all_goods
 
@@ -296,8 +302,11 @@ class ProductSyncManager:
         offset = 0
         
         while True:
-            params = {"offset": offset}
-            resp_data, _, _ = self.client.get("/v3/etagslist", params=params)
+            response = self.client.get_etags_list()
+            resp_data = response.data
+            
+            if not resp_data:
+                break
             
             result = resp_data.get('result', {})
             goods = result.get('goods', [])
@@ -333,7 +342,12 @@ class ProductSyncManager:
         params = {"good_ids": ids_str, "subaccount": "true"}
         
         try:
-            resp_data, new_etag, was_modified = self.client.get("/v3/feed-product", params=params)
+            response = self.client.request("GET", "/v3/feed-product", params=params)
+            resp_data = response.data
+            new_etag = response.etag
+            
+            if not resp_data:
+                return []
             
             # Парсинг ответа
             result = resp_data.get('result')
