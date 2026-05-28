@@ -21,6 +21,7 @@ from config import settings
 from nk_client import NKCatalogClient
 from models import Base, create_database_engine
 from catalogs_loader import CatalogsLoader
+from product_sync import ProductSyncManager
 
 
 # Настройка логирования
@@ -81,6 +82,55 @@ def cmd_load_catalogs(only: Optional[str] = None) -> None:
         session.close()
 
 
+def cmd_sync_products_full() -> None:
+    """Полная синхронизация всех товаров."""
+    logger.info("Запуск полной синхронизации товаров...")
+    
+    client = NKCatalogClient()
+    engine = create_database_engine(settings.database_url)
+    Base.metadata.create_all(engine)
+    
+    from sqlalchemy.orm import sessionmaker
+    SessionLocal = sessionmaker(bind=engine)
+    
+    manager = ProductSyncManager(client, SessionLocal)
+    stats = manager.sync_full()
+    
+    logger.info(f"Результат: {stats}")
+
+
+def cmd_sync_products_incremental() -> None:
+    """Инкрементальная синхронизация товаров."""
+    logger.info("Запуск инкрементальной синхронизации товаров...")
+    
+    client = NKCatalogClient()
+    engine = create_database_engine(settings.database_url)
+    Base.metadata.create_all(engine)
+    
+    from sqlalchemy.orm import sessionmaker
+    SessionLocal = sessionmaker(bind=engine)
+    
+    manager = ProductSyncManager(client, SessionLocal)
+    stats = manager.sync_incremental()
+    
+    logger.info(f"Результат: {stats}")
+
+
+def cmd_sync_products_reset() -> None:
+    """Сброс прогресса синхронизации."""
+    logger.info("Сброс прогресса синхронизации...")
+    
+    client = NKCatalogClient()
+    engine = create_database_engine(settings.database_url)
+    Base.metadata.create_all(engine)
+    
+    from sqlalchemy.orm import sessionmaker
+    SessionLocal = sessionmaker(bind=engine)
+    
+    manager = ProductSyncManager(client, SessionLocal)
+    manager.reset_progress()
+
+
 def main() -> None:
     """Точка входа CLI."""
     parser = argparse.ArgumentParser(
@@ -101,6 +151,27 @@ def main() -> None:
         help="Загрузить только указанный справочник",
     )
     
+    # Команда sync-products-full
+    full_parser = subparsers.add_parser(
+        "sync-products-full",
+        help="Полная синхронизация всех товаров"
+    )
+    full_parser.set_defaults(func=cmd_sync_products_full)
+    
+    # Команда sync-products-incremental
+    inc_parser = subparsers.add_parser(
+        "sync-products-incremental",
+        help="Инкрементальная синхронизация товаров"
+    )
+    inc_parser.set_defaults(func=cmd_sync_products_incremental)
+    
+    # Команда sync-products-reset
+    reset_parser = subparsers.add_parser(
+        "sync-products-reset",
+        help="Сброс прогресса синхронизации"
+    )
+    reset_parser.set_defaults(func=cmd_sync_products_reset)
+    
     args = parser.parse_args()
     
     if args.command is None:
@@ -109,6 +180,8 @@ def main() -> None:
     
     if args.command == "load-catalogs":
         cmd_load_catalogs(only=args.only)
+    elif hasattr(args, 'func'):
+        args.func()
     else:
         parser.print_help()
         sys.exit(1)

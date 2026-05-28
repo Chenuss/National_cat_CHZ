@@ -110,6 +110,11 @@ class Product(Base):
     good_img: Mapped[Optional[str]] = mapped_column(Text, comment="URL фото по умолчанию")
     etag: Mapped[Optional[str]] = mapped_column(String(100), comment="ETag для инкрементального обновления")
     
+    # Поля Фазы 3
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, index=True, comment="Товар удалён на сервере")
+    last_sync_at: Mapped[Optional[datetime]] = mapped_column(DateTime, comment="Дата последней синхронизации")
+    remainder_type: Mapped[Optional[str]] = mapped_column(String(50), comment="Тип остатка")
+    
     # Relationships
     packages: Mapped[List["ProductPackage"]] = relationship(
         "ProductPackage",
@@ -191,8 +196,17 @@ class ProductPackage(Base):
     weight_gross_g: Mapped[Optional[int]] = mapped_column(Integer, comment="Вес брутто (г)")
     weight_net_g: Mapped[Optional[int]] = mapped_column(Integer, comment="Вес нетто (г)")
     
-    # Материал
+    # Материал и тип упаковки
     material: Mapped[Optional[str]] = mapped_column(String(100), comment="Материал упаковки")
+    package_type: Mapped[Optional[str]] = mapped_column(String(100), comment="Тип упаковки")
+    
+    # Весогабариты из атрибутов (альтернативные поля)
+    gtin: Mapped[Optional[str]] = mapped_column(String(14), comment="GTIN упаковки")
+    height: Mapped[Optional[str]] = mapped_column(String(50), comment="Высота из атрибута")
+    depth: Mapped[Optional[str]] = mapped_column(String(50), comment="Глубина из атрибута")
+    width: Mapped[Optional[str]] = mapped_column(String(50), comment="Ширина из атрибута")
+    weight_gross: Mapped[Optional[str]] = mapped_column(String(50), comment="Вес брутто из атрибута")
+    volume: Mapped[Optional[str]] = mapped_column(String(50), comment="Объем из атрибута")
     
     # Relationship
     product: Mapped["Product"] = relationship("Product", back_populates="packages")
@@ -232,12 +246,29 @@ class ProductAttribute(Base):
     attr_name: Mapped[Optional[str]] = mapped_column(Text, comment="Наименование атрибута")
     attr_value: Mapped[Optional[str]] = mapped_column(Text, index=True, comment="Значение атрибута")
     
-    # Метаданные атрибута
+    # Метаданные атрибута (Фазы 1-2)
     value_type: Mapped[Optional[str]] = mapped_column(String(20), comment="Тип значения")
     unit: Mapped[Optional[str]] = mapped_column(String(50), comment="Единица измерения")
     is_required: Mapped[bool] = mapped_column(Boolean, default=False, comment="Обязательность")
     is_multiplicable: Mapped[bool] = mapped_column(Boolean, default=False, comment="Мультиплицируемость")
     layer: Mapped[Optional[str]] = mapped_column(String(20), comment="Слой (first_layer/second_layer)")
+    
+    # Метаданные атрибута (Фаза 3 - из API good_attrs)
+    attr_group_id: Mapped[Optional[int]] = mapped_column(Integer, comment="ID группы атрибутов")
+    attr_group_name: Mapped[Optional[str]] = mapped_column(String(200), comment="Название группы атрибутов")
+    attr_value_id: Mapped[Optional[int]] = mapped_column(Integer, comment="ID значения атрибута")
+    attr_value_type: Mapped[Optional[str]] = mapped_column(String(50), comment="Тип значения атрибута")
+    level: Mapped[Optional[str]] = mapped_column(String(50), comment="Уровень упаковки атрибута")
+    gtin: Mapped[Optional[str]] = mapped_column(String(14), comment="GTIN атрибута")
+    multiplier: Mapped[Optional[int]] = mapped_column(Integer, comment="Множитель атрибута")
+    
+    # Поля для сертификатов (Фаза 3)
+    certificate_number: Mapped[Optional[str]] = mapped_column(String(255), comment="Номер сертификата")
+    certificate_issued_date: Mapped[Optional[datetime]] = mapped_column(DateTime, comment="Дата выдачи сертификата")
+    certificate_valid_until_date: Mapped[Optional[datetime]] = mapped_column(DateTime, comment="Срок действия сертификата")
+    certificate_applicant: Mapped[Optional[str]] = mapped_column(Text, comment="Заявитель сертификата")
+    certificate_manufacturer: Mapped[Optional[str]] = mapped_column(Text, comment="Производитель в сертификате")
+    certificate_product_description: Mapped[Optional[str]] = mapped_column(Text, comment="Описание продукта в сертификате")
     
     # Relationship
     product: Mapped["Product"] = relationship("Product", back_populates="attributes")
@@ -275,6 +306,10 @@ class ProductImage(Base):
     size: Mapped[Optional[str]] = mapped_column(String(20), comment="Размер (small/medium/large)")
     width_px: Mapped[Optional[int]] = mapped_column(Integer, comment="Ширина (px)")
     height_px: Mapped[Optional[int]] = mapped_column(Integer, comment="Высота (px)")
+    
+    # Поля Фазы 3
+    photo_date: Mapped[Optional[datetime]] = mapped_column(DateTime, comment="Дата фотографии")
+    barcode: Mapped[Optional[str]] = mapped_column(String(50), comment="Штрихкод на изображении")
     
     # Relationship
     product: Mapped["Product"] = relationship("Product", back_populates="images")
@@ -377,6 +412,9 @@ class ProductSetItem(Base):
         Integer,
         ForeignKey("products.good_id", ondelete="SET NULL"),
     )
+    
+    # Поле Фазы 3 - альтернативное имя для child_gtin
+    child_gtin: Mapped[Optional[str]] = mapped_column(String(14), comment="GTIN дочернего товара (алиас)")
     
     # Relationships
     parent_product: Mapped["Product"] = relationship("Product", back_populates="set_items", foreign_keys=[parent_good_id])
