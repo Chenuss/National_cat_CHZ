@@ -1,1 +1,1 @@
-.env
+Nothing needs to be added to .gitignore since only a markdown file (audit_report.md) was added, which is a source/config file and should not be ignored.
