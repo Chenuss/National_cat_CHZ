@@ -214,6 +214,16 @@ class NKCatalogClient:
             f"auth={self.auth_method}, batch_size={self.batch_size}"
         )
     
+    @property
+    def api_usage_left(self) -> Optional[int]:
+        """Возвращает количество оставшихся запросов в рамках общего лимита."""
+        return self._api_usage_left
+    
+    @property
+    def method_usage_left(self) -> Optional[int]:
+        """Возвращает количество оставшихся запросов в рамках лимита метода."""
+        return self._method_usage_left
+    
     def _validate_auth(self) -> None:
         """
         Проверяет корректность настроек аутентификации.
