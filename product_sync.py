@@ -58,7 +58,7 @@ class ProductSyncManager:
     def __init__(self, client: NKCatalogClient, session_factory: sessionmaker):
         self.client = client
         self.session_factory = session_factory
-        self.state_repo = SyncStateRepo(session_factory)
+        self.state_repo = None  # Будет создан внутри методов синхронизации
 
     def sync_full(self) -> SyncStats:
         """
