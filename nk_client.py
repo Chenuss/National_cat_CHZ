@@ -618,13 +618,21 @@ class NKCatalogClient:
         params = {"subaccount": str(subaccount).lower()}
         
         if good_ids:
-            params["good_ids"] = ";".join(map(str, good_ids))
+            # Для единичного запроса используем good_id, для множественного - good_ids
+            if len(good_ids) == 1:
+                params["good_id"] = good_ids[0]
+            else:
+                params["good_ids"] = ";".join(map(str, good_ids))
         
         if gtins:
-            params["gtins"] = ";".join(gtins)
+            # Для единичного запроса используем gtin, для множественного - gtins
+            if len(gtins) == 1:
+                params["gtin"] = gtins[0]
+            else:
+                params["gtins"] = ";".join(gtins)
         
-        # feed-product не поддерживает ETag
-        return self.request("GET", "/v3/feed-product", params=params, use_etag=False)
+        # feed-product не поддерживает ETag, используем /v3/product endpoint
+        return self.request("GET", "/v3/product", params=params, use_etag=False)
     
     def get_product(
         self,
