@@ -139,6 +139,7 @@ class Product(Base):
         "ProductSetItem",
         back_populates="parent_product",
         cascade="all, delete-orphan",
+        foreign_keys="ProductSetItem.parent_good_id",
     )
     
     __table_args__ = (
@@ -437,6 +438,7 @@ class Brand(Base):
     owner_name: Mapped[Optional[str]] = mapped_column(Text, comment="Владелец бренда")
     owner_inn: Mapped[Optional[str]] = mapped_column(String(12), index=True, comment="ИНН владельца")
     country_code: Mapped[Optional[str]] = mapped_column(String(2), index=True, comment="Код страны (ISO Alpha-2)")
+    party_brand_id: Mapped[Optional[int]] = mapped_column(Integer, comment="ID бренда для субаккаунтов")
     etag: Mapped[Optional[str]] = mapped_column(String(100), comment="ETag для инкрементального обновления")
     
     __table_args__ = (

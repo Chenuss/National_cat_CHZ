@@ -1,34 +1,20 @@
 ```
+# Environment
+.env
+.env.local
+*.env.*
+
+# Database
+catalog.db
+
 # Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
-# Dependencies
+.Python
+env/
 venv/
 .venv/
-.env
-.env.local
-*.env.*
-
-# Logs
-*.log
-
-# Coverage
-.coverage
-coverage/
-htmlcov/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*.tmp
-
-# Build artifacts
-build/
-dist/
-*.egg-info/
+.ENV
 ```
